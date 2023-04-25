@@ -19,6 +19,7 @@ type Storage interface {
 	GetObject(ctx context.Context, objectName string) (io.ReadCloser, error)
 	PutObject(ctx context.Context, name string, data io.Reader, size int64) error
 	ListObjects(ctx context.Context, prefix string) ([]string, error)
+	DeleteObject(ctx context.Context, objectName string) error
 	SetPrefix(prefix string)
 	GetPrefix() string
 }
@@ -77,8 +78,9 @@ func (s *S3) PutObject(ctx context.Context, name string, data io.Reader, size in
 
 func (s *S3) ListObjects(ctx context.Context, prefix string) ([]string, error) {
 	opts := minio.ListObjectsOptions{
-		UseV1:  true,
-		Prefix: s.prefix + prefix,
+		UseV1:     true,
+		Recursive: true,
+		Prefix:    s.prefix + prefix,
 	}
 	list := []string{}
 
@@ -98,6 +100,14 @@ func (s *S3) SetPrefix(prefix string) {
 
 func (s *S3) GetPrefix() string {
 	return s.prefix
+}
+
+func (s *S3) DeleteObject(ctx context.Context, objectName string) error {
+	err := s.client.RemoveObject(ctx, s.bucketName, s.prefix+"/"+objectName, minio.RemoveObjectOptions{})
+	if err != nil {
+		return errors.Wrapf(err, "failed to remove object %s", objectName)
+	}
+	return nil
 }
 
 // Azure is a type for working with Azure Blob storages
@@ -172,4 +182,12 @@ func (a *Azure) SetPrefix(prefix string) {
 
 func (a *Azure) GetPrefix() string {
 	return a.prefix
+}
+
+func (a *Azure) DeleteObject(ctx context.Context, objectName string) error {
+	_, err := a.client.DeleteBlob(ctx, a.container, a.prefix+"/"+objectName, nil)
+	if err != nil {
+		return errors.Wrapf(err, "delete blob %s", objectName)
+	}
+	return nil
 }
