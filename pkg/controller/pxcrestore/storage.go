@@ -152,6 +152,17 @@ func (s *pvc) Init(ctx context.Context) error {
 }
 
 func (s *pvc) Finalize(ctx context.Context) error {
+	svc := backup.PVCRestoreService(s.cr)
+	if err := s.k8sClient.Delete(ctx, svc); err != nil {
+		return errors.Wrap(err, "failed to delete pvc service")
+	}
+	pod, err := backup.PVCRestorePod(s.cr, s.bcp.Status.StorageName, strings.TrimPrefix(s.bcp.Status.Destination, "pvc/"), s.cluster.Spec)
+	if err != nil {
+		return err
+	}
+	if err := s.k8sClient.Delete(ctx, pod); err != nil {
+		return errors.Wrap(err, "failed to delete pvc pod")
+	}
 	return nil
 }
 

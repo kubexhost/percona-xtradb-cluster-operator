@@ -10,12 +10,15 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	api "github.com/percona/percona-xtradb-cluster-operator/pkg/apis/pxc/v1"
 	"github.com/percona/percona-xtradb-cluster-operator/pkg/k8s"
 )
 
 func (r *ReconcilePerconaXtraDBClusterRestore) restore(ctx context.Context, cr *api.PerconaXtraDBClusterRestore, bcp *api.PerconaXtraDBClusterBackup, cluster *api.PerconaXtraDBCluster) error {
+	log := logf.FromContext(ctx)
+
 	if cluster.Spec.Backup == nil {
 		return errors.New("undefined backup section in a cluster spec")
 	}
@@ -35,12 +38,18 @@ func (r *ReconcilePerconaXtraDBClusterRestore) restore(ctx context.Context, cr *
 	if err = storageRestore.Init(ctx); err != nil {
 		return errors.Wrap(err, "failed to init restore")
 	}
-	defer storageRestore.Finalize(ctx)
+	defer func() {
+		if derr := storageRestore.Finalize(ctx); derr != nil {
+			log.Error(derr, "failed to finalize restore")
+		}
+	}()
 
 	return r.createJob(ctx, job)
 }
 
 func (r *ReconcilePerconaXtraDBClusterRestore) pitr(ctx context.Context, cr *api.PerconaXtraDBClusterRestore, bcp *api.PerconaXtraDBClusterBackup, cluster *api.PerconaXtraDBCluster) error {
+	log := logf.FromContext(ctx)
+
 	storageRestore, err := r.getStorageRestore(cr, bcp, cluster, true)
 	if err != nil {
 		return errors.Wrap(err, "failed to get storage")
@@ -55,7 +64,11 @@ func (r *ReconcilePerconaXtraDBClusterRestore) pitr(ctx context.Context, cr *api
 	if err = storageRestore.Init(ctx); err != nil {
 		return errors.Wrap(err, "failed to init storage")
 	}
-	defer storageRestore.Finalize(ctx)
+	defer func() {
+		if derr := storageRestore.Finalize(ctx); derr != nil {
+			log.Error(derr, "failed to finalize restore")
+		}
+	}()
 
 	return r.createJob(ctx, job)
 }
@@ -88,7 +101,7 @@ func (r *ReconcilePerconaXtraDBClusterRestore) validate(ctx context.Context, cr 
 	}
 
 	if err := storageRestore.Validate(ctx); err != nil {
-		return errors.Wrap(err, "failed to validate backup existance")
+		return errors.Wrap(err, "failed to validate backup existence")
 	}
 	return nil
 }
