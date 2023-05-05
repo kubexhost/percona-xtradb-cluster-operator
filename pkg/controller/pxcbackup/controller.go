@@ -184,6 +184,7 @@ func (r *ReconcilePerconaXtraDBClusterBackup) Reconcile(ctx context.Context, req
 		cr.Status.SSLSecretName = cluster.Spec.PXC.SSLSecretName
 		cr.Status.SSLInternalSecretName = cluster.Spec.PXC.SSLInternalSecretName
 		cr.Status.VaultSecretName = cluster.Spec.PXC.VaultSecretName
+		cr.Status.VerifyTLS = storage.VerifyTLS
 	}
 
 	bcp := backup.New(cluster)
@@ -365,7 +366,10 @@ func (r *ReconcilePerconaXtraDBClusterBackup) runS3BackupFinalizer(ctx context.C
 		destination = strings.TrimPrefix(destination, "/")
 	}
 	destination = strings.TrimSuffix(destination, "/") + "/"
-	verifyTLS := true // TODO: replace after https://github.com/percona/percona-xtradb-cluster-operator/pull/1399 merge
+	verifyTLS := true
+	if cr.Status.VerifyTLS != nil {
+		verifyTLS = *cr.Status.VerifyTLS
+	}
 	storage, err := storage.NewS3(cr.Status.S3.EndpointURL, accessKeyID, secretAccessKey, bucket, prefix, cr.Status.S3.Region, verifyTLS)
 	if err != nil {
 		return errors.Wrap(err, "new s3 storage")
@@ -476,6 +480,7 @@ func (r *ReconcilePerconaXtraDBClusterBackup) updateJobStatus(bcp *api.PerconaXt
 		SSLSecretName:         bcp.Status.SSLSecretName,
 		SSLInternalSecretName: bcp.Status.SSLInternalSecretName,
 		VaultSecretName:       bcp.Status.VaultSecretName,
+		VerifyTLS:             storage.VerifyTLS,
 	}
 
 	switch {
