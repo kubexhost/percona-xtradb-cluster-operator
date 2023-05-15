@@ -2,7 +2,9 @@ package pxcbackup
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -430,7 +432,7 @@ func removeBackupObjects(ctx context.Context, storage storage.Storage, container
 			return errors.Wrap(err, "list backup blobs")
 		}
 		for _, blob := range blobs {
-			if err := storage.DeleteObject(ctx, destination+"/"+blob); err != nil {
+			if err := storage.DeleteObject(ctx, blob); err != nil {
 				return errors.Wrapf(err, "delete blob %s", blob)
 			}
 		}
@@ -440,7 +442,7 @@ func removeBackupObjects(ctx context.Context, storage storage.Storage, container
 			return errors.Wrap(err, "list backup blobs")
 		}
 		for _, blob := range blobs {
-			if err := storage.DeleteObject(ctx, destination+"/"+blob); err != nil {
+			if err := storage.DeleteObject(ctx, blob); err != nil {
 				return errors.Wrapf(err, "delete blob %s", blob)
 			}
 		}

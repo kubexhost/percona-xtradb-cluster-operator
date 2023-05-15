@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
@@ -58,9 +59,10 @@ func NewS3(endpoint, accessKeyID, secretAccessKey, bucketName, prefix, region st
 
 // GetObject return content by given object name
 func (s *S3) GetObject(ctx context.Context, objectName string) (io.ReadCloser, error) {
-	oldObj, err := s.client.GetObject(ctx, s.bucketName, s.prefix+objectName, minio.GetObjectOptions{})
+	objPath := path.Join(s.prefix, objectName)
+	oldObj, err := s.client.GetObject(ctx, s.bucketName, objPath, minio.GetObjectOptions{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "get object %s", s.prefix+objectName)
+		return nil, errors.Wrapf(err, "get object %s", objPath)
 	}
 
 	return oldObj, nil
@@ -68,9 +70,10 @@ func (s *S3) GetObject(ctx context.Context, objectName string) (io.ReadCloser, e
 
 // PutObject puts new object to storage with given name and content
 func (s *S3) PutObject(ctx context.Context, name string, data io.Reader, size int64) error {
-	_, err := s.client.PutObject(ctx, s.bucketName, s.prefix+name, data, size, minio.PutObjectOptions{})
+	objPath := path.Join(s.prefix, name)
+	_, err := s.client.PutObject(ctx, s.bucketName, objPath, data, size, minio.PutObjectOptions{})
 	if err != nil {
-		return errors.Wrapf(err, "put object %s", s.prefix+name)
+		return errors.Wrapf(err, "put object %s", objPath)
 	}
 
 	return nil
@@ -80,7 +83,7 @@ func (s *S3) ListObjects(ctx context.Context, prefix string) ([]string, error) {
 	opts := minio.ListObjectsOptions{
 		UseV1:     true,
 		Recursive: true,
-		Prefix:    s.prefix + prefix,
+		Prefix:    path.Join(s.prefix, prefix) + "/",
 	}
 	list := []string{}
 
@@ -103,7 +106,8 @@ func (s *S3) GetPrefix() string {
 }
 
 func (s *S3) DeleteObject(ctx context.Context, objectName string) error {
-	err := s.client.RemoveObject(ctx, s.bucketName, s.prefix+"/"+objectName, minio.RemoveObjectOptions{})
+	objPath := path.Join(s.prefix, objectName)
+	err := s.client.RemoveObject(ctx, s.bucketName, objPath, minio.RemoveObjectOptions{})
 	if err != nil {
 		return errors.Wrapf(err, "failed to remove object %s", objectName)
 	}
@@ -138,23 +142,25 @@ func NewAzure(storageAccount, accessKey, endpoint, container, prefix string) (*A
 }
 
 func (a *Azure) GetObject(ctx context.Context, name string) (io.ReadCloser, error) {
-	resp, err := a.client.DownloadStream(ctx, a.container, a.prefix+name, &azblob.DownloadStreamOptions{})
+	objPath := path.Join(a.prefix, name)
+	resp, err := a.client.DownloadStream(ctx, a.container, objPath, &azblob.DownloadStreamOptions{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "download stream: %s", a.prefix+name)
+		return nil, errors.Wrapf(err, "download stream: %s", objPath)
 	}
 	return resp.Body, nil
 }
 
 func (a *Azure) PutObject(ctx context.Context, name string, data io.Reader, _ int64) error {
-	_, err := a.client.UploadStream(ctx, a.container, a.prefix+name, data, nil)
+	objPath := path.Join(a.prefix, name)
+	_, err := a.client.UploadStream(ctx, a.container, objPath, data, nil)
 	if err != nil {
-		return errors.Wrapf(err, "upload stream: %s", a.prefix+name)
+		return errors.Wrapf(err, "upload stream: %s", objPath)
 	}
 	return nil
 }
 
 func (a *Azure) ListObjects(ctx context.Context, prefix string) ([]string, error) {
-	listPrefix := a.prefix + prefix
+	listPrefix := path.Join(a.prefix, prefix) + "/"
 	pg := a.client.NewListBlobsFlatPager(a.container, &container.ListBlobsFlatOptions{
 		Prefix: &listPrefix,
 	})
@@ -185,9 +191,10 @@ func (a *Azure) GetPrefix() string {
 }
 
 func (a *Azure) DeleteObject(ctx context.Context, objectName string) error {
-	_, err := a.client.DeleteBlob(ctx, a.container, a.prefix+"/"+objectName, nil)
+	objPath := path.Join(a.prefix, objectName)
+	_, err := a.client.DeleteBlob(ctx, a.container, objPath, nil)
 	if err != nil {
-		return errors.Wrapf(err, "delete blob %s", objectName)
+		return errors.Wrapf(err, "delete blob %s", objPath)
 	}
 	return nil
 }
