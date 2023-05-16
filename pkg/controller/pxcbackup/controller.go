@@ -2,9 +2,7 @@ package pxcbackup
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"path"
 	"reflect"
 	"strconv"
 	"strings"
