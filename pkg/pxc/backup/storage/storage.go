@@ -10,11 +10,14 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	"github.com/pkg/errors"
 )
+
+var ErrObjectNotFound = errors.New("object not found")
 
 type Storage interface {
 	GetObject(ctx context.Context, objectName string) (io.ReadCloser, error)
@@ -62,6 +65,9 @@ func (s *S3) GetObject(ctx context.Context, objectName string) (io.ReadCloser, e
 	objPath := path.Join(s.prefix, objectName)
 	oldObj, err := s.client.GetObject(ctx, s.bucketName, objPath, minio.GetObjectOptions{})
 	if err != nil {
+		if minio.ToErrorResponse(errors.Cause(err)).Code == "NoSuchKey" {
+			return nil, ErrObjectNotFound
+		}
 		return nil, errors.Wrapf(err, "get object %s", objPath)
 	}
 
@@ -109,6 +115,9 @@ func (s *S3) DeleteObject(ctx context.Context, objectName string) error {
 	objPath := path.Join(s.prefix, objectName)
 	err := s.client.RemoveObject(ctx, s.bucketName, objPath, minio.RemoveObjectOptions{})
 	if err != nil {
+		if minio.ToErrorResponse(errors.Cause(err)).Code == "NoSuchKey" {
+			return ErrObjectNotFound
+		}
 		return errors.Wrapf(err, "failed to remove object %s", objectName)
 	}
 	return nil
@@ -145,6 +154,9 @@ func (a *Azure) GetObject(ctx context.Context, name string) (io.ReadCloser, erro
 	objPath := path.Join(a.prefix, name)
 	resp, err := a.client.DownloadStream(ctx, a.container, objPath, &azblob.DownloadStreamOptions{})
 	if err != nil {
+		if bloberror.HasCode(errors.Cause(err), bloberror.BlobNotFound) {
+			return nil, ErrObjectNotFound
+		}
 		return nil, errors.Wrapf(err, "download stream: %s", objPath)
 	}
 	return resp.Body, nil
@@ -194,6 +206,9 @@ func (a *Azure) DeleteObject(ctx context.Context, objectName string) error {
 	objPath := path.Join(a.prefix, objectName)
 	_, err := a.client.DeleteBlob(ctx, a.container, objPath, nil)
 	if err != nil {
+		if bloberror.HasCode(errors.Cause(err), bloberror.BlobNotFound) {
+			return ErrObjectNotFound
+		}
 		return errors.Wrapf(err, "delete blob %s", objPath)
 	}
 	return nil

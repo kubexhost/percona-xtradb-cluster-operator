@@ -423,25 +423,28 @@ func (r *ReconcilePerconaXtraDBClusterBackup) runAzureBackupFinalizer(ctx contex
 	return nil
 }
 
-func removeBackupObjects(ctx context.Context, storage storage.Storage, container, destination string) func() error {
+func removeBackupObjects(ctx context.Context, s storage.Storage, container, destination string) func() error {
 	return func() error {
-		blobs, err := storage.ListObjects(ctx, destination)
+		blobs, err := s.ListObjects(ctx, destination)
 		if err != nil {
 			return errors.Wrap(err, "list backup blobs")
 		}
 		for _, blob := range blobs {
-			if err := storage.DeleteObject(ctx, blob); err != nil {
-				return errors.Wrapf(err, "delete blob %s", blob)
+			if err := s.DeleteObject(ctx, blob); err != nil {
+				return errors.Wrapf(err, "delete object %s", blob)
 			}
 		}
+		if err := s.DeleteObject(ctx, strings.TrimSuffix(destination, "/")+".md5"); err != nil && err != storage.ErrObjectNotFound {
+			return errors.Wrapf(err, "delete object %s", strings.TrimSuffix(destination, "/")+".md5")
+		}
 		destination = strings.TrimSuffix(destination, "/") + ".sst_info/"
-		blobs, err = storage.ListObjects(ctx, destination)
+		blobs, err = s.ListObjects(ctx, destination)
 		if err != nil {
-			return errors.Wrap(err, "list backup blobs")
+			return errors.Wrap(err, "list backup objects")
 		}
 		for _, blob := range blobs {
-			if err := storage.DeleteObject(ctx, blob); err != nil {
-				return errors.Wrapf(err, "delete blob %s", blob)
+			if err := s.DeleteObject(ctx, blob); err != nil {
+				return errors.Wrapf(err, "delete object %s", blob)
 			}
 		}
 		return nil

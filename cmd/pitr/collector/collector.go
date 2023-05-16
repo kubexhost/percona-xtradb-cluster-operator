@@ -14,8 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
-	"github.com/minio/minio-go/v7"
 	"github.com/pkg/errors"
 
 	"github.com/percona/percona-xtradb-cluster-operator/cmd/pitr/pxc"
@@ -122,13 +120,13 @@ func (c *Collector) lastGTIDSet(ctx context.Context, sourceID string) (string, e
 	// get last binlog set stored on S3
 	lastSetObject, err := c.storage.GetObject(ctx, lastSetFilePrefix+sourceID)
 	if err != nil {
-		if bloberror.HasCode(errors.Cause(err), bloberror.BlobNotFound) {
+		if err == storage.ErrObjectNotFound {
 			return "", nil
 		}
 		return "", errors.Wrap(err, "get last set content")
 	}
 	lastSet, err := ioutil.ReadAll(lastSetObject)
-	if err != nil && minio.ToErrorResponse(errors.Cause(err)).Code != "NoSuchKey" {
+	if err != nil {
 		return "", errors.Wrap(err, "read last gtid set")
 	}
 	return string(lastSet), nil
