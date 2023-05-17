@@ -37,6 +37,9 @@ type S3 struct {
 
 // NewS3 return new Manager, useSSL using ssl for connection with storage
 func NewS3(endpoint, accessKeyID, secretAccessKey, bucketName, prefix, region string, verifyTLS bool) (*S3, error) {
+	if endpoint == "" {
+		endpoint = "https://s3.amazonaws.com"
+	}
 	useSSL := strings.Contains(endpoint, "https")
 	endpoint = strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
 	transport := http.DefaultTransport

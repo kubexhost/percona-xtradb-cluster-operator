@@ -49,9 +49,6 @@ func (s *s3) Validate(ctx context.Context) error {
 	accessKeyID := string(sec.Data["AWS_ACCESS_KEY_ID"])
 	secretAccessKey := string(sec.Data["AWS_SECRET_ACCESS_KEY"])
 	ep := s.bcp.Status.S3.EndpointURL
-	if len(ep) == 0 {
-		ep = "s3.amazonaws.com"
-	}
 	bucket, prefix := s.bcp.Status.S3.BucketAndPrefix()
 	verifyTLS := true
 	if s.cluster.Spec.Backup != nil && len(s.cluster.Spec.Backup.Storages) > 0 {
