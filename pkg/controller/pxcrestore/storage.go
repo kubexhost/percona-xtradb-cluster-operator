@@ -98,7 +98,7 @@ type pvc struct {
 }
 
 func (s *pvc) Job() (*batchv1.Job, error) {
-	return backup.PVCRestoreJob(s.cr, s.cluster.Spec)
+	return backup.PVCRestoreJob(s.cr, s.cluster, s.bcp)
 }
 
 func (s *pvc) Validate(ctx context.Context) error {
@@ -112,7 +112,7 @@ func (s *pvc) Init(ctx context.Context) error {
 	if err := k8s.SetControllerReference(s.cr, svc, s.scheme); err != nil {
 		return err
 	}
-	pod, err := backup.PVCRestorePod(s.cr, s.bcp.Status.StorageName, strings.TrimPrefix(destination, "pvc/"), s.cluster.Spec)
+	pod, err := backup.PVCRestorePod(s.cr, s.bcp.Status.StorageName, strings.TrimPrefix(destination, "pvc/"), s.cluster)
 	if err != nil {
 		return errors.Wrap(err, "restore pod")
 	}
@@ -153,7 +153,7 @@ func (s *pvc) Finalize(ctx context.Context) error {
 	if err := s.k8sClient.Delete(ctx, svc); err != nil {
 		return errors.Wrap(err, "failed to delete pvc service")
 	}
-	pod, err := backup.PVCRestorePod(s.cr, s.bcp.Status.StorageName, strings.TrimPrefix(s.bcp.Status.Destination, "pvc/"), s.cluster.Spec)
+	pod, err := backup.PVCRestorePod(s.cr, s.bcp.Status.StorageName, strings.TrimPrefix(s.bcp.Status.Destination, "pvc/"), s.cluster)
 	if err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ type azure struct {
 }
 
 func (s *azure) Job() (*batchv1.Job, error) {
-	return backup.AzureRestoreJob(s.cr, s.bcp, s.cluster.Spec, s.bcp.Status.Destination, s.pitr)
+	return backup.AzureRestoreJob(s.cr, s.bcp, s.cluster, s.bcp.Status.Destination, s.pitr)
 }
 
 func (s *azure) Validate(ctx context.Context) error {
