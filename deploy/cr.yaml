@@ -157,11 +157,11 @@ spec:
 #        path: /data
 #        type: Directory
       persistentVolumeClaim:
-#        storageClassName: standard
-#        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: standard
+        accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
-            storage: 6G
+            storage: 100G
     gracePeriod: 600
   haproxy:
     enabled: true
@@ -447,11 +447,11 @@ spec:
 #        path: /data
 #        type: Directory
       persistentVolumeClaim:
-#        storageClassName: standard
-#        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: cstor-csi-disk
+        accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
-            storage: 2G
+            storage: 100G
     podDisruptionBudget:
       maxUnavailable: 1
 #      minAvailable: 0
@@ -478,10 +478,10 @@ spec:
         memory: 100M
         cpu: 200m
   pmm:
-    enabled: false
+    enabled: true
     image: percona/pmm-client:2.32.0
     serverHost: monitoring-service
-#    serverUser: admin
+    serverUser: admin
 #    pxcParams: "--disable-tablestats-limit=2000"
 #    proxysqlParams: "--custom-labels=CUSTOM-LABELS"
     resources:
